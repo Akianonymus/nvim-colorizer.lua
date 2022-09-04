@@ -92,18 +92,50 @@ local BUFFER_INIT = {}
 -- store buffer local autocmd(s) id
 local BUFFER_AUTOCMDS = {}
 
+---defaults options.
+--<pre>
+--  user_default_options = {
+--      RGB = true, -- #RGB hex codes
+--      RRGGBB = true, -- #RRGGBB hex codes
+--      names = true, -- "Name" codes like Blue or blue
+--      RRGGBBAA = false, -- #RRGGBBAA hex codes
+--      AARRGGBB = false, -- 0xAARRGGBB hex codes
+--      rgb_fn = false, -- CSS rgb() and rgba() functions
+--      hsl_fn = false, -- CSS hsl() and hsla() functions
+--      css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB, RRGGBB
+--      css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
+--      -- Available modes for `mode`: foreground, background,  virtualtext
+--      mode = "background", -- Set the display mode.
+--      -- Available methods are false / "normal" / "lsp" / "both"
+--      tailwind = false -- Enable tailwind colors
+--      virtualtext = "■",
+--  }
+--</pre>
+---@table user_default_options
+--@field RGB boolean
+--@field RRGGBB boolean
+--@field names boolean
+--@field RRGGBBAA boolean
+--@field AARRGGBB boolean
+--@field rgb_fn boolean
+--@field hsl_fn boolean
+--@field css boolean
+--@field css_fn boolean
+--@field mode string
+--@field tailwind boolean|string
+--@field virtualtext string
 local USER_DEFAULT_OPTIONS = {
-  RGB = true, -- #RGB hex codes
-  RRGGBB = true, -- #RRGGBB hex codes
-  names = true, -- "Name" codes like Blue or blue
-  RRGGBBAA = false, -- #RRGGBBAA hex codes
-  AARRGGBB = false, -- 0xAARRGGBB hex codes
-  rgb_fn = false, -- CSS rgb() and rgba() functions
-  hsl_fn = false, -- CSS hsl() and hsla() functions
-  css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB, RRGGBB
-  css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
-  -- Available modes: foreground, background, virtualtext
-  mode = "background", -- Set the display mode.
+  RGB = true,
+  RRGGBB = true,
+  names = true,
+  RRGGBBAA = false,
+  AARRGGBB = false,
+  rgb_fn = false,
+  hsl_fn = false,
+  css = false,
+  css_fn = false,
+  mode = "background",
+  tailwind = false,
   virtualtext = "■",
 }
 
@@ -251,24 +283,12 @@ end
 --<pre>
 --    require("colorizer").setup {
 --      filetypes = { "*" },
---      user_default_options = {
---        RGB = true, -- #RGB hex codes
---        RRGGBB = true, -- #RRGGBB hex codes
---        names = true, -- "Name" codes like Blue or blue
---        RRGGBBAA = false, -- #RRGGBBAA hex codes
---        AARRGGBB = false, -- 0xAARRGGBB hex codes
---        rgb_fn = false, -- CSS rgb() and rgba() functions
---        hsl_fn = false, -- CSS hsl() and hsla() functions
---        css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB, RRGGBB
---        css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
---        -- Available modes for `mode`: foreground, background,  virtualtext
---        mode = "background", -- Set the display mode.
---        virtualtext = "■",
---      },
+--      user_default_options,
 --      -- all the sub-options of filetypes apply to buftypes
 --      buftypes = {},
 --    }
 --</pre>
+--For all user_default_options, see |user_default_options|
 ---@param config table: Config containing above parameters.
 ---@usage `require'colorizer'.setup()`
 local function setup(config)

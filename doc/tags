@@ -35,3 +35,4 @@ colorizer.matcher_utils.make_matcher	colorizer.txt	/*colorizer.matcher_utils.mak
 colorizer.reload_all_buffers	colorizer.txt	/*colorizer.reload_all_buffers*
 colorizer.setup	colorizer.txt	/*colorizer.setup*
 colorizer.trie-introduction	colorizer.txt	/*colorizer.trie-introduction*
+colorizer.user_default_options	colorizer.txt	/*colorizer.user_default_options*

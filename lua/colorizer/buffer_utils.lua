@@ -13,10 +13,14 @@ local color_is_bright = color_utils.color_is_bright
 local matcher_utils = require "colorizer.matcher_utils"
 local make_matcher = matcher_utils.make_matcher
 
+local highlight_buffer, rehighlight_buffer
+local BUFFER_LINES = {}
 --- Default namespace used in `highlight_buffer` and `colorizer.attach_to_buffer`.
 -- @see highlight_buffer
 -- @see colorizer.attach_to_buffer
 local DEFAULT_NAMESPACE = create_namespace "colorizer"
+-- use a different namespace for tailwind as will be cleared if kept in Default namespace
+local DEFAULT_NAMESPACE_TAILWIND = create_namespace "colorizer_tailwind"
 local HIGHLIGHT_NAME_PREFIX = "colorizer"
 --- Highlight mode which will be use to render the colour
 local HIGHLIGHT_MODE_NAMES = {
@@ -72,6 +76,13 @@ local function create_highlight(rgb_hex, options)
 end
 
 local function add_highlight(options, buf, ns, data)
+  clear_namespace(
+    buf,
+    ns,
+    BUFFER_LINES[buf]["old_min"] or BUFFER_LINES[buf]["min"],
+    BUFFER_LINES[buf]["old_max"] or BUFFER_LINES[buf]["max"] + 1
+  )
+
   if vim.tbl_contains({ "foreground", "background" }, options.mode) then
     for linenr, hls in pairs(data) do
       for _, hl in ipairs(hls) do
@@ -90,6 +101,37 @@ local function add_highlight(options, buf, ns, data)
   end
 end
 
+local function highlight_buffer_tailwind(buf, ns, mode, options)
+  -- it can take some time to actually fetch the results
+  -- on top of that, tailwindcss is quite slow in neovim
+  vim.defer_fn(function()
+    local opts = { textDocument = vim.lsp.util.make_text_document_params() }
+    --@local
+    ---@diagnostic disable-next-line: param-type-mismatch
+    vim.lsp.buf_request(buf, "textDocument/documentColor", opts, function(err, results, _, _)
+      if err == nil and results ~= nil then
+        local datas = {}
+        for _, color in pairs(results) do
+          local cur_line = color.range.start.line
+          local r, g, b, a = color.color.red or 0, color.color.green or 0, color.color.blue or 0, color.color.alpha or 0
+          local rgb_hex = string.format("%02x%02x%02x", r * a * 255, g * a * 255, b * a * 255)
+          local name = create_highlight(rgb_hex, mode)
+          local first_col = color.range.start.character
+          local end_col = color.range["end"].character
+
+          local d = datas[cur_line] or {}
+          table.insert(d, { name = name, range = { first_col, end_col } })
+          datas[cur_line] = d
+        end
+        add_highlight(options, buf, ns, datas)
+      end
+    end)
+  end, 10)
+end
+
+local COLOR_LSP_ATTACHED = {}
+local COLOR_LSP_AU_CREATED = {}
+local COLOR_LSP_AU_ID = {}
 --- Highlight the buffer region.
 -- Highlight starting from `line_start` (0-indexed) for each line described by `lines` in the
 -- buffer `buf` and attach it to the namespace `ns`.
@@ -98,7 +140,7 @@ end
 ---@param lines table: the lines to highlight from the buffer.
 ---@param line_start number: line_start should be 0-indexed
 ---@param options table: Configuration options as described in `setup`
-local function highlight_buffer(buf, ns, lines, line_start, options)
+function highlight_buffer(buf, ns, lines, line_start, options)
   if buf == 0 or buf == nil then
     buf = api.nvim_get_current_buf()
   end
@@ -129,19 +171,47 @@ local function highlight_buffer(buf, ns, lines, line_start, options)
     end
   end
   add_highlight(options, buf, ns, data)
-end
 
-local BUFFER_LINES = {}
---- Rehighlight the buffer if colorizer is active
----@param buf number: Buffer number
----@param options table: Buffer options
-local function rehighlight_buffer(buf, options)
-  if buf == 0 or buf == nil then
-    buf = api.nvim_get_current_buf()
+  if not options.tailwind or (options.tailwind ~= "lsp" and options.tailwind ~= "both") then
+    return
   end
 
-  local ns = DEFAULT_NAMESPACE
+  -- create the autocmds so tailwind colours only activate when tailwindcss lsp is active
+  if not COLOR_LSP_AU_CREATED[buf] then
+    COLOR_LSP_AU_ID[buf] = {}
+    COLOR_LSP_AU_ID[buf][1] = api.nvim_create_autocmd("LspAttach", {
+      buffer = buf,
+      callback = function(args)
+        local ok, client = pcall(vim.lsp.get_client_by_id, args.data.client_id)
+        if ok then
+          if client.name == "tailwindcss" and client.supports_method "textDocument/documentColor" then
+            highlight_buffer_tailwind(buf, DEFAULT_NAMESPACE_TAILWIND, mode, options)
+            COLOR_LSP_ATTACHED[buf] = true
+          end
+        end
+      end,
+    })
+    -- make sure the autocmds are deleted after lsp server is closed
+    COLOR_LSP_AU_ID[buf][2] = api.nvim_create_autocmd("LspDetach", {
+      buffer = buf,
+      callback = function()
+        pcall(api.nvim_del_autocmd, COLOR_LSP_AU_ID[buf][1])
+        pcall(api.nvim_del_autocmd, COLOR_LSP_AU_ID[buf][2])
+        COLOR_LSP_ATTACHED[buf], COLOR_LSP_AU_CREATED[buf], COLOR_LSP_AU_ID[buf] = nil, nil, nil
+        rehighlight_buffer(0, options)
+      end,
+    })
+    COLOR_LSP_AU_CREATED[buf] = true
+  end
 
+  -- only try to do tailwindcss highlight if lsp is attached
+  if COLOR_LSP_ATTACHED[buf] then
+    highlight_buffer_tailwind(buf, DEFAULT_NAMESPACE_TAILWIND, mode, options)
+  end
+end
+
+-- get the amount lines to highlight
+local function getrow(buf)
   if not BUFFER_LINES[buf] then
     BUFFER_LINES[buf] = {}
   end
@@ -176,15 +246,29 @@ local function rehighlight_buffer(buf, options)
       max = new_max
     end
   end
-
   min = min or new_min
   max = max or new_max
-  clear_namespace(buf, ns, min, max)
-  local lines = buf_get_lines(buf, min, max, false)
-  highlight_buffer(buf, ns, lines, min, options)
   -- store current window position to be used later to incremently highlight
   BUFFER_LINES[buf]["max"] = new_max
   BUFFER_LINES[buf]["min"] = new_min
+  BUFFER_LINES[buf]["old_max"] = max
+  BUFFER_LINES[buf]["old_min"] = min
+  return min, max
+end
+
+--- Rehighlight the buffer if colorizer is active
+---@param buf number: Buffer number
+---@param options table: Buffer options
+function rehighlight_buffer(buf, options)
+  if buf == 0 or buf == nil then
+    buf = api.nvim_get_current_buf()
+  end
+
+  local ns = DEFAULT_NAMESPACE
+
+  local min, max = getrow(buf)
+  local lines = buf_get_lines(buf, min, max, false)
+  highlight_buffer(buf, ns, lines, min, options)
 end
 
 --- @export

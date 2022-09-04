@@ -60,13 +60,15 @@ local COLOR_MAP
 local COLOR_TRIE
 local COLOR_NAME_MINLEN, COLOR_NAME_MAXLEN
 local COLOR_NAME_SETTINGS = { lowercase = true, strip_digits = false }
+local TAILWIND_ENABLED = false
 --- Grab all the colour values from `vim.api.nvim_get_color_map` and create a lookup table.
 -- COLOR_MAP is used to store the colour values
 ---@param line string: Line to parse
 ---@param i number: Index of line from where to start parsing
-local function color_name_parser(line, i)
+---@param opts table: Currently contains whether tailwind is enabled or not
+local function color_name_parser(line, i, opts)
   --- Setup the COLOR_MAP and COLOR_TRIE
-  if not COLOR_TRIE then
+  if not COLOR_TRIE or opts.tailwind ~= TAILWIND_ENABLED then
     COLOR_MAP = {}
     COLOR_TRIE = Trie()
     for k, v in pairs(api.nvim_get_color_map()) do
@@ -83,8 +85,23 @@ local function color_name_parser(line, i)
         end
       end
     end
+    if opts and opts.tailwind then
+      if opts.tailwind == "normal" or opts.tailwind == "both" then
+        local tailwind = require "colorizer.tailwind_colors"
+        -- setup tailwind colors
+        for k, v in pairs(tailwind.colors) do
+          for _, pre in ipairs(tailwind.prefixes) do
+            local name = pre .. "-" .. k
+            COLOR_NAME_MINLEN = COLOR_NAME_MINLEN and min(#name, COLOR_NAME_MINLEN) or #name
+            COLOR_NAME_MAXLEN = COLOR_NAME_MAXLEN and max(#name, COLOR_NAME_MAXLEN) or #name
+            COLOR_MAP[name] = v
+            COLOR_TRIE:insert(name)
+          end
+        end
+      end
+    end
+    TAILWIND_ENABLED = opts.tailwind
   end
-
   if #line < i + COLOR_NAME_MINLEN - 1 then
     return
   end

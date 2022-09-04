@@ -22,22 +22,26 @@ local CATEGORY_ALPHANUM = bor(CATEGORY_ALPHA, CATEGORY_DIGIT)
 
 -- do not run the loop multiple times
 local b = string.byte
+local byte_values = { ["0"] = b "0", ["9"] = b "9", ["a"] = b "a", ["f"] = b "f", ["z"] = b "z" }
+local extra_char = { [b "-"] = true }
+
 for i = 0, 255 do
   local v = 0
+  local lowercase = bor(i, 0x20)
   -- Digit is bit 1
-  if i >= b "0" and i <= b "9" then
+  if i >= byte_values["0"] and i <= byte_values["9"] then
     v = bor(v, lshift(1, 0))
     v = bor(v, lshift(1, 2))
-    v = bor(v, lshift(i - b "0", 4))
-  end
-  local lowercase = bor(i, 0x20)
-  -- Alpha is bit 2
-  if lowercase >= b "a" and lowercase <= b "z" then
+    v = bor(v, lshift(i - byte_values["0"], 4))
+  elseif lowercase >= byte_values["a"] and lowercase <= byte_values["z"] then
+    -- Alpha is bit 2
     v = bor(v, lshift(1, 1))
-    if lowercase <= b "f" then
+    if lowercase <= byte_values["f"] then
       v = bor(v, lshift(1, 2))
-      v = bor(v, lshift(lowercase - b "a" + 10, 4))
+      v = bor(v, lshift(lowercase - byte_values["a"] + 10, 4))
     end
+  elseif extra_char[i] then
+    v = i
   end
   BYTE_CATEGORY[i] = v
 end

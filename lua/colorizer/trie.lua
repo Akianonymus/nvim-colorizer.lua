@@ -55,13 +55,18 @@ local INDEX_LOOKUP_TABLE = ffi.new("uint8_t[?]", total_char)
 local CHAR_LOOKUP_TABLE = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 do
   local b = string.byte
+  local extra_char = {
+    [b "-"] = true,
+  }
+  local byte = { ["0"] = b "0", ["9"] = b "9", ["a"] = b "a", ["A"] = b "A", ["z"] = b "z", ["Z"] = b "Z" }
   for i = 0, total_char do
-    if i >= b "0" and i <= b "9" then
-      INDEX_LOOKUP_TABLE[i] = i - b "0"
-    elseif i >= b "A" and i <= b "Z" then
-      INDEX_LOOKUP_TABLE[i] = i - b "A" + 10
-    elseif i >= b "a" and i <= b "z" then
-      INDEX_LOOKUP_TABLE[i] = i - b "a" + 10 + 26
+    if i >= byte["0"] and i <= byte["9"] then
+      INDEX_LOOKUP_TABLE[i] = i - byte["0"]
+    elseif i >= byte["A"] and i <= byte["Z"] then
+      INDEX_LOOKUP_TABLE[i] = i - byte["A"] + 10
+    elseif i >= byte["a"] and i <= byte["z"] then
+      INDEX_LOOKUP_TABLE[i] = i - byte["a"] + 10 + 26
+    elseif extra_char[i] then
     else
       INDEX_LOOKUP_TABLE[i] = total_char
     end

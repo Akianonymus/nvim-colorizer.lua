@@ -34,12 +34,14 @@ local function compile_matcher(matchers, matchers_trie)
     local prefix = trie:longest_prefix(line, i)
     if prefix then
       local fn = "_" .. prefix
-      return parser[fn](line, i, matchers[fn])
+      if parser[fn] then
+        return parser[fn](line, i, matchers[fn])
+      end
     end
 
     -- Colour names
     if matchers.color_name_parser then
-      return color_name_parser(line, i)
+      return color_name_parser(line, i, matchers.color_name_parser)
     end
   end
   return parse_fn
@@ -53,6 +55,7 @@ local MATCHER_CACHE = {}
 ---@return function|boolean: function which will just parse the line for enabled parsers
 local function make_matcher(options)
   local enable_names = options.css or options.names
+  local enable_tailwind = options.tailwind
   local enable_RGB = options.css or options.RGB
   local enable_RRGGBB = options.css or options.RRGGBB
   local enable_RRGGBBAA = options.css or options.RRGGBBAA
@@ -68,6 +71,9 @@ local function make_matcher(options)
     + (enable_AARRGGBB and 1 or 4)
     + (enable_rgb and 1 or 5)
     + (enable_hsl and 1 or 6)
+    + (enable_tailwind == "normal" and 1 or 7)
+    + (enable_tailwind == "lsp" and 1 or 8)
+    + (enable_tailwind == "both" and 1 or 9)
 
   if matcher_key == 0 then
     return false
@@ -83,7 +89,7 @@ local function make_matcher(options)
   matchers.max_prefix_length = 0
 
   if enable_names then
-    matchers.color_name_parser = true
+    matchers.color_name_parser = { tailwind = options.tailwind }
   end
 
   local valid_lengths = { [3] = enable_RGB, [6] = enable_RRGGBB, [8] = enable_RRGGBBAA }

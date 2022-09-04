@@ -85,6 +85,9 @@ Functions: ~
 
     |clear_highlight_cache| - Clear the highlight cache and reload all buffers.
 
+Tables: ~
+    |user_default_options| - defaults options.
+
 Fields: ~
     |DEFAULT_NAMESPACE| - Default namespace used in
     `colorizer.buffer_utils.highlight_buffer` and `attach_to_buffer`.
@@ -149,25 +152,12 @@ setup({config})                                                *colorizer.setup*
 >
 	require("colorizer").setup {
 	  filetypes = { "*" },
-	  user_default_options = {
-	    RGB = true, -- #RGB hex codes
-	    RRGGBB = true, -- #RRGGBB hex codes
-	    names = true, -- "Name" codes like Blue or blue
-	    RRGGBBAA = false, -- #RRGGBBAA hex codes
-	    AARRGGBB = false, -- 0xAARRGGBB hex codes
-	    rgb_fn = false, -- CSS rgb() and rgba() functions
-	    hsl_fn = false, -- CSS hsl() and hsla() functions
-	    css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB,
-	    RRGGBB
-	    css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
-	    -- Available modes for `mode`: foreground, background,  virtualtext
-	    mode = "background", -- Set the display mode.
-	    virtualtext = "■",
-	  },
+	  user_default_options,
 	  -- all the sub-options of filetypes apply to buftypes
 	  buftypes = {},
 	}
 <
+    For all user_default_options, see |user_default_options|
 
 
     Parameters: ~
@@ -193,6 +183,46 @@ reload_all_buffers()                              *colorizer.reload_all_buffers*
 
 clear_highlight_cache()                        *colorizer.clear_highlight_cache*
     Clear the highlight cache and reload all buffers.
+
+
+
+user_default_options                            *colorizer.user_default_options*
+    defaults options.
+
+>
+      user_default_options = {
+	  RGB = true, -- #RGB hex codes
+	  RRGGBB = true, -- #RRGGBB hex codes
+	  names = true, -- "Name" codes like Blue or blue
+	  RRGGBBAA = false, -- #RRGGBBAA hex codes
+	  AARRGGBB = false, -- 0xAARRGGBB hex codes
+	  rgb_fn = false, -- CSS rgb() and rgba() functions
+	  hsl_fn = false, -- CSS hsl() and hsla() functions
+	  css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB,
+	  RRGGBB
+	  css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
+	  -- Available modes for `mode`: foreground, background,  virtualtext
+	  mode = "background", -- Set the display mode.
+	  -- Available methods are false / "normal" / "lsp" / "both"
+	  tailwind = false -- Enable tailwind colors
+	  virtualtext = "■",
+      }
+<
+
+
+    Fields: ~
+	{RGB} -  boolean
+	{RRGGBB} -  boolean
+	{names} -  boolean
+	{RRGGBBAA} -  boolean
+	{AARRGGBB} -  boolean
+	{rgb_fn} -  boolean
+	{hsl_fn} -  boolean
+	{css} -  boolean
+	{css_fn} -  boolean
+	{mode} -  string
+	{tailwind} -  boolean|string
+	{virtualtext} -  string
 
 
 
@@ -321,7 +351,7 @@ color_is_bright({r}, {g}, {b})           *colorizer.color_utils.color_is_bright*
 
 
 
-color_name_parser({line}, {i})         *colorizer.color_utils.color_name_parser*
+color_name_parser({line}, {i}, {opts}) *colorizer.color_utils.color_name_parser*
     Grab all the colour values from `vim.api.nvim_get_color_map` and create a
     lookup table.
 
@@ -331,6 +361,7 @@ color_name_parser({line}, {i})         *colorizer.color_utils.color_name_parser*
     Parameters: ~
 	{line} -  string: Line to parse
 	{i} -  number: Index of line from where to start parsing
+	{opts} -  table: Currently contains whether tailwind is enabled or not
 
 
 
